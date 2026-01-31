@@ -1,1 +1,1 @@
-log-level: WARNING
+log-level: INFO

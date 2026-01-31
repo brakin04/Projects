@@ -122,9 +122,9 @@ def login_security():
         if user and user.security_answers[security_questions.index(security_question)].lower() == security_answer.lower():
             login_user(user)
             logger.info(f"Security question authentication success for user: {user.nickname}")
-            flash("Welcome back!", "success")
+            flash("Welcome back! I reccomend changing your password.", "success")
             logger.debug("Login security function exited with success as user in routes.py")
-            return redirect(url_for('main.dashboard'))
+            return redirect(url_for('main.profile'))
         else:
             logger.warning(f"Security question authentication failure for: {nickname} email: {email}")
             flash("Invalid credentials", "warning")
