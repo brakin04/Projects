@@ -1,0 +1,17 @@
+.vscode
+target/
+*.out
+out/
+src/main/test/out
+*.class
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.log*
+logs/
+.idea/
+*.iws
+*.iml
+*.ipr

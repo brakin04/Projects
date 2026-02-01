@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en" th:replace="~{base :: layout(~{::section})}">
+
+<section>
+    <h2 th:text="'Current Player: ' + ${currentPlayer}"></h2>
+    <p th:text="'You are playing a ' + ${type}"></p>
+
+    <div class="winner" th:if="${winner}">
+        <div th:if="${winner == 'Cats game'}">
+            <p th:text="'Cats game!'"></p>
+        </div>
+        <div th:if="${winner != 'Cats game'}">
+            <p th:text="'The winner is: ' + ${winner} + '!'"></p>
+        </div>
+    </div>
+
+    <form th:action="@{/playGame/move}" method="post">
+        <div class="grid">
+            <button class="button-board" name="move" value="0" th:text="${board[0]}"></button>
+            <button class="button-board" name="move" value="1" th:text="${board[1]}"></button>
+            <button class="button-board" name="move" value="2" th:text="${board[2]}"></button>
+            <button class="button-board" name="move" value="3" th:text="${board[3]}"></button>
+            <button class="button-board" name="move" value="4" th:text="${board[4]}"></button>
+            <button class="button-board" name="move" value="5" th:text="${board[5]}"></button>
+            <button class="button-board" name="move" value="6" th:text="${board[6]}"></button>
+            <button class="button-board" name="move" value="7" th:text="${board[7]}"></button>
+            <button class="button-board" name="move" value="8" th:text="${board[8]}"></button>
+        </div>
+    </form>
+
+    <div class="button-container">
+        <form th:action="@{/reset}" method="post">
+            <button class="button-bigger" type="submit">Reset Game</button>
+        </form>
+
+        <form th:action="@{/}" method="get">
+            <button class="button-bigger" type="submit">Back to Start</button>
+        </form>
+    </div>
+
+</section>
+</html>

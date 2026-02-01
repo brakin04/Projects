@@ -1,0 +1,48 @@
+body {
+    background-color: lightblue;
+}
+h3 {
+    color: red;
+}
+.grid {
+    display: grid;
+    grid-template-columns: repeat(3, 80px);
+    grid-gap: 5px;
+    justify-content: center;
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+.winner {
+    width: 100%;
+    margin-bottom: 10px;
+    text-align: center;
+}
+/* Buttons */
+button {
+    width: 100px;
+    height: 20px;
+    border-color: black;
+}
+.button-container {
+    display: flex;
+    justify-content: space-between; /* pushes buttons to opposite sides */
+    width: 220px; /* adjust as needed */
+    margin: 0 auto; /* centers the container */
+}
+.button-board {
+    width: 80px;
+    height: 80px;
+    font-size: 64px !important;
+    padding: 0;
+    line-height: 1;
+    background-color: lightgray;
+    outline-color: black;
+    outline-width: 4px;
+}
+.button-round {
+    border-radius: 50px;
+}
+.button-bigger {
+    width: 100px;
+    height: 40px;
+}

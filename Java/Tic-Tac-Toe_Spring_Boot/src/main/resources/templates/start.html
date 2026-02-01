@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en" th:replace="~{base :: layout(~{::section})}">
+
+<body>
+    <section>
+        <h2>Welcome to Tic Tac Toe!</h2>
+        <p></p>
+        <form th:action="@{/gameSetup}" method="get">
+            <button type="submit">Settings</button>
+        </form>
+        <p></p>
+        <form th:action="@{/playGame}" method="get">
+            <button class="button-round" type="submit">Start Game</button>
+        </form>
+<!--        <p></p>-->
+<!--        <button class="button-round" type="reset">Reset</button>-->
+    </section>
+</body>
+</html>

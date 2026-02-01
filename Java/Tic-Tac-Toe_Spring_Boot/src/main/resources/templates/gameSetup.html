@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en" th:replace="~{base :: layout(~{::section})}">
+
+<section>
+    <h2>Game Rules</h2>
+    <h3 th:text="${message}" style="text-decoration-color: red"></h3>
+    <div th:if="${mode == 'none'}">
+        <form th:action="@{/gameSetup/setGameType}" method="post">
+            <!-- sets the game type -->
+            <p>Choose the game type</p>
+            <button type="submit" name="type" value="bot">Play a Bot</button> <!--onclick="showDifficulty()"-->
+            <button type="submit" name="type" value="friend">Play a Friend</button>
+        </form>
+    </div>
+    <p></p>
+
+    <!-- Difficulty options, initially hidden -->
+    <div th:if="${mode == 'bot'}" style="display:block; margin-top: 10px;">
+        <p></p>
+        <p>Choose your player:</p>
+        <form th:action="@{/gameSetup/setPlayerValue}" method="post">
+            <button type="submit" name="playerValue" value='X'>X</button>
+            <button type="submit" name="playerValue" value='O'>O</button>
+        </form>
+        <p></p>
+        <p>Select difficulty:</p>
+        <form th:action="@{/gameSetup/setDifficulty}" method="post">
+            <button type="submit" name="difficulty" value="easy">Easy</button>
+            <button type="submit" name="difficulty" value="medium">Medium</button>
+            <button type="submit" name="difficulty" value="hard">Hard</button>
+        </form>
+    </div>
+
+    <p></p>
+
+    <!-- Players can set a name -->
+    <div th:if="${mode != 'none'}">
+        <form th:action="@{/gameSetup/setName}" method="post">
+            <label for="name">Name:</label>
+            <input type="text" id="name" name="name" th:value="Player">
+            <button type="submit">Submit</button>
+        </form>
+    </div>
+    <p></p>
+
+    <!-- Back button -->
+    <form th:action="@{/}" method="get">
+        <button type="submit">Back</button>
+    </form>
+    <script th:src="@{/script.js}"></script>
+</section>
+</html>
