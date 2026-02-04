@@ -1,0 +1,60 @@
+## Build products
+build/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+*.mode2v3
+*.xcoguide
+*.xcscheme
+*.stash
+*.xccheckout
+
+## Generated Xcode projects
+*.xcodeproj/
+!*.xcodeproj/*.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcodeproj/project.xcworkspace/
+!*.xcworkspace/
+!*.playground/
+
+## User defined
+DerivedData/
+.DS_Store
+profile
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+## Build products
+build/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+*.mode2v3
+*.xcoguide
+*.xcscheme
+*.stash
+*.xccheckout
+
+# Swift Package Manager (SPM)
+#
+.build/
+
+# CocoaPods
+#
+Pods/
+*.xcworkspace
+!*.xcworkspace/contents.xcworkspacedata
+
+## Other
+*.moved-aside
+.hg/
+.svn/
+.git/
+.idea/
+.vscode/
+
+# Carthage
+#
+Carthage/
