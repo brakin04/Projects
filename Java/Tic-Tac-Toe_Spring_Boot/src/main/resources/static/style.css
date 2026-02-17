@@ -25,9 +25,9 @@ button {
 }
 .button-container {
     display: flex;
-    justify-content: space-between; /* pushes buttons to opposite sides */
-    width: 220px; /* adjust as needed */
-    margin: 0 auto; /* centers the container */
+    justify-content: space-between;
+    width: 220px;
+    margin: 0 auto;
 }
 .button-board {
     width: 80px;
