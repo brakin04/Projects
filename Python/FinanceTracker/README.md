@@ -86,7 +86,7 @@ Option 3:
 ### 7️⃣ To exit the app press: crtl + c
 
 ---
-To change the file logger's level, click the logging info button on the dashboard:
+To change the file logger's level, click the logging info button on the dashboard
 
 ---
 ## 💡 Notes

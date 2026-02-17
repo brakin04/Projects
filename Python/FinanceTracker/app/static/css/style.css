@@ -2,6 +2,12 @@
 body {
     background-color: #ffffff;
 }
+
+body.blurred {
+    filter: blur(100%);
+    pointer-events: none; 
+}
+
 .nav-link{
     color: #000000;
     font-weight: 400;
