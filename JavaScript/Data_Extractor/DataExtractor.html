@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Extractor</title>
+    <style>
+        /* Minimum CSS for basic readability */
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 600px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            color: #333;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 0.5rem;
+            box-sizing: border-box; /* Ensures padding doesn't break 100% width */
+            font-family: inherit;
+            resize: vertical; /* Allows the user to only resize it up and down */
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Data Extractor Dashboard</h1>
+    
+    <div>
+        <label for="rawText">Paste your messy text below:</label>
+        <textarea id="rawText" rows="12" placeholder="Start typing or paste text here..."></textarea>
+        <div id="extracted">
+            
+        </div>
+    </div>
+
+    <script src="main.js"></script>
+
+</body>
+</html>
