@@ -6,6 +6,8 @@ import os
 from app.logging_config import logger 
 from flask_cors import CORS
 from flask_migrate import Migrate
+from datetime import datetime
+import shutil
 
 db = SQLAlchemy()
 login_manager = LoginManager()
@@ -67,6 +69,21 @@ def create_app():
     return app
 import atexit
 
-def log_exit():
+# Backup database and log exit
+def log_backup_exit():
     logger.critical("Finance program exited unexpectedly or was terminated.")
-atexit.register(log_exit)
+    try:
+        source = '../instance/finance.db'
+        backup_dir = '../backups'
+        if not os.path.exists(backup_dir):
+            os.makedirs(backup_dir)
+            
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        dest = f"{backup_dir}/backup_{timestamp}.db"
+        
+        shutil.copy2(source, dest)
+        logger.info(f"Database backed up to {dest}")
+    except Exception as e:
+        logger.error(f"Backup failed: {e}")
+
+atexit.register(log_backup_exit)
