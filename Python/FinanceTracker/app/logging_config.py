@@ -2,7 +2,7 @@ import os
 import logging
 
 # Function to get or set the saved log level in config.txt
-def savedLevel(type=str, value=str):
+def savedLevel(type: str | None = "GET", value: str | None = None):
     logger.info(f"savedLevel function in logging_config.py called with type: {type}, value: {value}")
     idx = -1
     level = None

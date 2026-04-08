@@ -49,9 +49,9 @@ if __name__ == '__main__':
         # Check installation of all parameters
         with app.app_context():
             db.create_all()
-        host = "127.0.0.1"
+        host = "0.0.0.0"
         port = 5050
-        print(f"Flask app is running at: http://{host}:{port}")
+        print(f"Flask app is running at: http://127.0.0.1:{port}")
         app.run(debug=False, host=host, port=port, use_reloader=False)
     except Exception as e:
         logger.critical(f"Application crashed: {e}")

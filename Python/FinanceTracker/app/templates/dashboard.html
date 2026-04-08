@@ -15,16 +15,16 @@
         <hr>
         <div class="row">
             <div class="col-md-3 mb-2">
-                <a href="{{ url_for('main.expenses') }}" class="btn btn-outline-danger w-100">Expenses</a>
+                <a href="{{ url_for('finance.expenses') }}" class="btn btn-outline-danger w-100">Expenses</a>
             </div>
             <div class="col-md-3 mb-2">
-                <a href="{{ url_for('main.incomes') }}" class="btn btn-outline-success w-100">Incomes</a>
+                <a href="{{ url_for('finance.incomes') }}" class="btn btn-outline-success w-100">Incomes</a>
             </div>
             <div class="col-md-3 mb-2">
-                <a href="{{ url_for('main.budget') }}" class="btn btn-outline-info w-100">Budget</a>
+                <a href="{{ url_for('finance.budget') }}" class="btn btn-outline-info w-100">Budget</a>
             </div>
             <div class="col-md-3 mb-2">
-                <a href="{{ url_for('main.categories') }}" class="btn btn-outline-primary w-100">Categories</a>
+                <a href="{{ url_for('finance.categories') }}" class="btn btn-outline-primary w-100">Categories</a>
             </div>
         </div>
     </div>
@@ -39,7 +39,7 @@
         <!-- Income Information -->
         <div style="border: 4px dashed green; padding: 10px;" class="row">
             <h4>Money In</h4>
-            <form action="{{ url_for('main.filter_dashboard_incomes') }}" method="POST" class="mt-3">
+            <form action="{{ url_for('main.filter_dashboard', kind='incomes') }}" method="POST" class="mt-3">
                 <div class="row justify-content-between mt-4">
                     <div class="col-md-4">
                         <h5>Total</h5>

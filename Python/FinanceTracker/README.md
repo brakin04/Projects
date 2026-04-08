@@ -89,6 +89,12 @@ Option 3:
 To change the file logger's level, click the logging info button on the dashboard
 
 ---
+## How to run using Docker
+```bash
+    docker build -t finance-app .
+    docker run -p 5050:5050 finance-app
+```
+
 ## 💡 Notes
 - Passwords are securely hashed using PBKDF2
 - Users can add expenses and incomes with custom categories

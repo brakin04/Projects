@@ -9,7 +9,7 @@
 
         <p>Create your own.</p>
         <div class="mb-3 d-flex justify-content-left">
-            <a class="btn btn-outline-warning w-50" href="{{ url_for('main.add_budget') }}">Add a limit</a>
+            <a class="btn btn-outline-warning w-50" href="{{ url_for('finance.add_budget') }}">Add a limit</a>
         </div>
 
         <hr>
@@ -33,8 +33,8 @@
                         <td>{{ budget.category }}</td>
                         <!-- Actions -->
                         <td>
-                            <a href="{{ url_for('main.edit_budget', budget_id=budget.id) }}" class="btn btn-outline-info btn-sm">Edit</a>
-                            <a href="{{ url_for('main.delete_budget', budget_id=budget.id) }}" class="btn btn-outline-danger btn-sm">Delete</a>
+                            <a href="{{ url_for('finance.edit_budget', budget_id=budget.id) }}" class="btn btn-outline-info btn-sm">Edit</a>
+                            <a href="{{ url_for('finance.delete_budget', budget_id=budget.id) }}" class="btn btn-outline-danger btn-sm">Delete</a>
                         </td>
                     </tr>
                 {% endfor %}
