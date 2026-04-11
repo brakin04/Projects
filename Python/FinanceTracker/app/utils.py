@@ -3,7 +3,7 @@ from app.logging_config import logger
 from flask_login import  current_user
 from datetime import datetime, timedelta
 from typing import Optional
-from sqlalchemy import func
+import plotly.express as px
 from dateutil.relativedelta import relativedelta
 
 #------------------------------
@@ -23,7 +23,7 @@ def get_file_content(file_path: Optional[str] = "no path given"):
     
 
 #-------------------------------
-# Return all current categories of a specific type (expense, income, or all)
+# Return all current categories of a specific type (expense, income, or all) as a list
 def get_all_categories(type: Optional[str] = 'all'):
     logger.debug(f"get_all_categories function entered in utils.py for type: {type}")
     categories = []
@@ -37,7 +37,9 @@ def get_all_categories(type: Optional[str] = 'all'):
     return categories
 
 
-# Gets all expenses or incomes in a date range for the current user. Used for dashboard filters and comparisons
+#-------------------------------
+# Gets all expenses or incomes in a date range for the current user. Used for dashboard filters and comparisons. 
+#   Returns a list of expenses or incomes or None if there's none or type is wrong.
 def get_finances_by_date_range(start_date: Optional[datetime] = None, end_date: Optional[datetime] = None, 
                                finance_type: Optional[str] = None):
     logger.debug(f"get_finances_by_date_range function entered in utils.py for type: {finance_type}")
@@ -55,29 +57,27 @@ def get_finances_by_date_range(start_date: Optional[datetime] = None, end_date: 
         if end_date:
             query = query.filter(Income.date <= end_date)
     logger.debug(f"get_finances_by_date_range function exited in utils.py with query: {query is not None}")
-    return query
+    return query.all() if query else None
 
 
-# gets total amount from a query of expenses or incomes. Used for dashboard filters and comparisons
-def get_total_from_query(query=None, kind: Optional[str] = None):
-    logger.debug(f"get_total_from_query function entered in utils.py for kind: {kind}")
+#-------------------------------
+# Gets total amount from a query of expenses or incomes. Used for dashboard filters and comparisons. 
+#   Returns a double or 0 if none.
+def get_total_from_query_list(query: Optional[list] = None):
+    logger.debug(f"get_total_from_query function entered in utils.py")
     total = 0
-    if query and kind:
-        if kind == 'i':
-            total = query.with_entities(func.sum(Income.amount)).scalar() or 0
-        elif kind == 'e':
-            total = query.with_entities(func.sum(Expense.amount)).scalar() or 0
-    logger.debug(f"get_total_from_query function exited in utils.py with total: {total}")
+    if query and len(query) > 0:
+        total = sum(item.amount for item in query)
+    logger.debug(f"get_total_from_query function exited in utils.py")
     return total
 
 
 #-------------------------------
-# Helper for repeat in dashboard filters. Checks input to get form dates based on 
-#   timeframe then queries correct table for values in the date range 
-#  returns [start date, end date, income query, expense query]
+# Helper for repeat in dashboard filters. Checks input to get form 
+#   dates based on timeframe. returns [start date, end date]
 def check_dates(timeframe: Optional[str] = None, form_start_date: Optional[str] = None, 
-                form_end_date: Optional[str] = None, for_what: Optional[str] = None):
-    logger.debug(f"check_dates function entered in utils.py for: {for_what}")
+                form_end_date: Optional[str] = None):
+    logger.debug(f"check_dates function entered in utils.py")
     end_date = None
     start_date = None
 
@@ -114,26 +114,12 @@ def check_dates(timeframe: Optional[str] = None, form_start_date: Optional[str] 
         if form_end_date:
             end_date = datetime.strptime(form_end_date, '%Y-%m-%d').date()
 
-    # Queries the correct table for expenses or incomes in the found date range
-    expquery = None
-    incquery = None
-    total = 0
-    if (for_what == "expenses" or for_what == "compares") and end_date:
-        expquery = get_finances_by_date_range(start_date, end_date, 'e')
-        if for_what == "compares":
-            total -= get_total_from_query(expquery, 'e') if expquery else 0
-        else:
-            total += get_total_from_query(expquery, 'e') if expquery else 0
-    elif (for_what == "incomes" or for_what == "compares") and end_date:
-        incquery = get_finances_by_date_range(start_date, end_date, 'i')
-        total += get_total_from_query(incquery, 'i') if incquery else 0
-
-    logger.debug(f"Check dates function exited in utils.py expquery: {expquery is not None} and incquery: {incquery is not None}")
-    return [start_date, end_date, total]
+    logger.debug(f"Check dates function exited in utils.py ")
+    return [start_date, end_date]
 
 
 #-------------------------------
-# Checks if a category is in use (before deleting or editing)
+# Checks if a category is in use (before deleting or editing). Returns a boolean.
 def category_in_use(category: Category, user_id: int):
     logger.debug(f"category_in_use function entered in utils.py for category: {category.name}")
     in_use = False
@@ -147,116 +133,88 @@ def category_in_use(category: Category, user_id: int):
 
 
 #-------------------------------
-#gets category totals
-def get_category_totals(query=None, kind: Optional[str] = None):
-    category_totals = []
-    if query and kind:
-        if kind == 'e':
-            category_totals = query.with_entities(Expense.category, func.sum(Expense.amount)).group_by(Expense.category).all()
-        elif kind == 'i':
-            category_totals = query.with_entities(Income.category, func.sum(Income.amount)).group_by(Income.category).all()
-    return category_totals
-
-
-import plotly.express as px
-#-------------------------------
-# Creates charts for dashboard
-def get_pie_chart(data: Optional[map] = {}, type: Optional[str] = 'no type'):
+# Creates pie chart for dashboard. Takes in a list of expenses or incomes and returns html
+def get_pie_chart(query_data: Optional[list] = None, type: Optional[str] = 'No type'):
     logger.debug(f"get_pie_chart function entered in utils.py for: {type}")
+
+    if not query_data or len(query_data) == 0:
+        logger.debug("get_pie_chart function exited in utils.py because no data")
+        return "No pie chart data"
+    
+    category_map = {}
+    for item in query_data:
+        category_map[item.category] = category_map.get(item.category, 0) + item.amount
+
     fig = px.pie(
-        names=list(data.keys()), 
-        values = [v['percentage'] for v in data.values()],
-        title=f'{type.capitalize()} by Category {"- no data" if len(data) == 0 else ""}'
+        names=list(category_map.keys()), 
+        values=list(category_map.values()),
+        title=f'{type.capitalize()} by Category'
     )
-    chart_div = fig.to_html(full_html=False, include_plotlyjs='cdn') # false is div only
-    logger.debug("get_pie_chart function exited in utils.py")
-    return chart_div
+    logger.debug("get_pie_chart function exited in utils.py with success")
+    return fig.to_html(full_html=False, include_plotlyjs='cdn') # false is div only
 
 
 #-------------------------------
-# Creates graph for dashboard
-def get_line_graph(start: Optional[datetime] = None, end: Optional[datetime] = None, 
-                   type: Optional[str] = 'no type'):
-    logger.debug(f"get_line_graph function entered in utils.py for: {type}")
+# Creates bar graph for dashboard. Takes in a list of expenses or incomes and returns html
+def get_bar_graph(start: Optional[datetime] = None, end: Optional[datetime] = None, 
+                   query_data: Optional[list] = None, type: Optional[str] = 'no type'):
+    logger.debug(f"get_bar_graph function entered in utils.py for: {type}")
+
+    if not query_data or len(query_data) == 0:
+        logger.debug("get_bar_graph function exited in utils.py because no data")
+        return "No bar graph data"
     
-    typeChar = 'e' if type == "expenses" else 'i'
-    theData = get_finances_by_date_range(start, end, typeChar)
+    actual_start = start if start else min(d.date for d in query_data)
+    actual_end = end if end else max(d.date for d in query_data)
+    if hasattr(actual_start, 'date'): actual_start = actual_start.date()
+    if hasattr(actual_end, 'date'): actual_end = actual_end.date()
+    delta_days = (actual_end - actual_start).days
 
-    total = 0
-    category_totals = get_category_totals(theData, typeChar)
-    # if type == "expenses" and expenses:
-    #     total = expenses.with_entities(func.sum(Expense.amount)).scalar() or 0
-    #     # count = expenses.with_entities(func.count(Expense.amount)).scalar() or 0
-    #     category_totals = expenses.with_entities(Expense.category, func.sum(Expense.amount)).group_by(Expense.category).all()
-    # elif type == "incomes" and incomes:
-    #     total = incomes.with_entities(func.sum(Income.amount)).scalar() or 0
-    #     # count = incomes.with_entities(func.count(Income.amount)).scalar() or 0
-    #     category_totals = incomes.with_entities(Income.category, func.sum(Income.amount)).group_by(Income.category).all()
-    # Line graph data
-    line_data = {}
-    if start:
-        line_data[start.strftime('%Y-%m-%d')] = 0
-    if end:
-        line_data[end.strftime('%Y-%m-%d')] = 0
+    fill_split = 1
+    if delta_days > 365 * 20:
+        fmt = '%Y'
+        fill_split = 367
+    elif delta_days > 365 * 2:
+        fmt = '%Y-%m'
+        fill_split = 32
+    elif delta_days > 90:
+        fmt = '%Y-w%W'
+        fill_split=7
+    else:
+        fmt = '%Y-%m-%d'
 
-    # Loop through each date in the range
-    split = 1
-    if start and end:
-        dateDelta = (start - end).days
-        if (end - start).days > 360:
-            dateDelta = (start - end).days
-            split = int(max((dateDelta / 180) * 2, 1))
-
-        if start_date and end_date:
-            temp_date = start_date
-            while temp_date <= end_date:
-                line_data[temp_date.strftime('%Y-%m-%d')] = 0
-                temp_date += timedelta(days=split)
-        
-        # Sum values from each date
-        # turns into multiple days combined when all time is selected to avoid overcrowding the graph
-        #     split is determined by how long the date range is
-        # if theData:
-        #     sum = [0, 0, timeAnswers[0].strftime('%Y-%m-%d')]
-        #     for data in theData:
-        #         if (sum[2] - data.date.strftime('%Y-%m-%d')).days :
-        #         sum[1] += 1
-        #         sum[0] += data.amount
-        #         if (sum[1] >= split):
-        #             date_key = data.date.strftime('%Y-%m-%d')
-        #             line_data[date_key] = line_data.get(date_key, 0) + sum[0]
-        #             sum = [0, 0]
-    if theData:
-        # Pre-convert keys to date objects once for efficiency
-        available_buckets = [datetime.strptime(k, '%Y-%m-%d').date() for k in line_data.keys()]
-        for data in theData:
-            closest_bucket_date = min(available_buckets, key=lambda x: abs((x - data.date).days))
-            date_key = closest_bucket_date.strftime('%Y-%m-%d')
-            print(f"closest bucket: {date_key} for data date: {data.date}")
-            line_data[date_key] += data.amount
-
-    # Pie chart data
-    category_breakdown = {}
-    if total > 0:
-        for category, amount in category_totals:
-            percentage = (amount / total) * 100
-            category_breakdown[category] = {'total': amount, 'percentage': round(percentage, 2)}
-
-    dates = sorted(data.keys())
-    amounts = [data[date] for date in dates]
-
-    # This happens if timeframe is none and no dates are specified 
-    if len(dates) == 0:
-        logger.debug("get_line_graph function exited in utils.py because no dates")
-        return "No line graph data"
+    bar_data = {}
+    if delta_days >= 0:
+        current = actual_start
+        if fill_split != 1:
+            current = current.replace(day=1)
+        while current <= actual_end:
+            month_key = current.strftime(fmt)
+            bar_data[month_key] = 0
+            current = current + timedelta(days=fill_split)
+            if fill_split != 7 and fill_split != 1:
+                current = current.replace(day=1)
     
-    fig = px.line(
-        x=dates,
+    for item in query_data:
+        bucket_key = item.date.strftime(fmt)
+        bar_data[bucket_key] = bar_data.get(bucket_key, 0) + item.amount
+
+    sorted_keys = sorted(bar_data.keys())
+    amounts = [bar_data[k] for k in sorted_keys]
+
+    fig = px.bar(
+        x=sorted_keys,
         y=amounts,
-        title=f'{type.capitalize()} Over Time {"- no data" if len(data) == 0 else ""}',
-        labels={'x': 'Date', 'y': 'Amount'}
+        title=f'{type.capitalize()} Over Time',
+        labels={'x': 'Time Period', 'y': 'Total Amount'},
+        template="plotly_white"
     )
+    fig.update_layout(xaxis_tickangle=-45,              
+            xaxis=dict(
+            tickmode='auto',
+            nticks=15,      # Limits the maximum number of labels shown
+            type='category' # Keeps the bars centered over the labels
+        ))
 
-    chart_div = fig.to_html(full_html=False, include_plotlyjs='cdn')
-    logger.debug("get_line_graph function exited in utils.py with finished graph")
-    return chart_div
+    logger.debug("get_bar_graph function exited in utils.py with finished graph")
+    return fig.to_html(full_html=False, include_plotlyjs='cdn')

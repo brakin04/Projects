@@ -7,7 +7,7 @@ from ..models import db, User, Expense, Income
 from werkzeug.security import generate_password_hash
 from flask_login import login_required, current_user
 from app.logging_config import logger, savedLevel
-from ..utils import get_file_content, check_dates, get_pie_chart, get_line_graph
+from ..utils import get_file_content, check_dates, get_pie_chart, get_bar_graph, get_finances_by_date_range, get_total_from_query_list
 from sqlalchemy import func
 from datetime import datetime, timedelta
 import logging
@@ -84,21 +84,58 @@ def profile():
 ###
 
 
-# ------------------------------
+# # ------------------------------
+# @main_bp.route('/dashboard')
+# @login_required
+# def dashboard():
+#     logger.debug("Dashboard function entered in main.py")
+#     expenses = session.get('dashboard_expenses', {})
+#     incomes = session.get('dashboard_incomes', {})
+#     compares = session.get('dashboard_compares', {})
+#     timeframes = ["None", "1 day", "3 days", "5 days", "7 days", "1 month", "6 months", "1 year", "All time"]
+#     return render_template('dashboard.html', expenses=expenses, incomes=incomes, 
+#                            compare=compares, timeframes=timeframes)
+
 @main_bp.route('/dashboard')
 @login_required
 def dashboard():
-    logger.debug("Dashboard function entered in main.py")
-    expenses = session.get('dashboard_expenses', {})
-    incomes = session.get('dashboard_incomes', {})
-    compares = session.get('dashboard_compares', {})
+    # Helper to convert stored ISO strings back to datetime objects
+    def get_dates(kind_data):
+        s = datetime.fromisoformat(kind_data['start_date']) if kind_data.get('start_date') else None
+        e = datetime.fromisoformat(kind_data['end_date']) if kind_data.get('end_date') else None
+        return s, e
+
+    # Prepare containers for charts/totals to pass to template
+    processed = {"expenses": {}, "incomes": {}, "compares": {}}
+    
+    for kind in ['expenses', 'incomes', 'compares']:
+        sess_data = session.get(f'dashboard_{kind}', {})
+        if sess_data:
+            start, end = get_dates(sess_data)
+            
+            if kind == "compares":
+                i_data = get_finances_by_date_range(start, end, 'i')
+                e_data = get_finances_by_date_range(start, end, 'e')
+                sess_data['profit'] = get_total_from_query_list(i_data) - get_total_from_query_list(e_data)
+            else:
+                data = get_finances_by_date_range(start, end, kind[0])
+                sess_data['total'] = get_total_from_query_list(data)
+                sess_data['category_chart'] = get_pie_chart(query_data=data, type=kind)
+                sess_data['bar_graph'] = get_bar_graph(start=start, end=end, query_data=data, type=kind)
+            
+            processed[kind] = sess_data
+
     timeframes = ["None", "1 day", "3 days", "5 days", "7 days", "1 month", "6 months", "1 year", "All time"]
-    return render_template('dashboard.html', expenses=expenses, incomes=incomes, 
-                           compare=compares, timeframes=timeframes)
+    return render_template('dashboard.html', 
+                           expenses=processed['expenses'], 
+                           incomes=processed['incomes'], 
+                           compare=processed['compares'], 
+                           timeframes=timeframes)
 
 
-# Combine all 3 into one
 #-------------------------------
+# This function is used to filter the dashboard based on user input. It takes the kind as an 
+#   argument to know which filters to apply and where to store them.
 @main_bp.route('/dashboard/filter', methods=['POST'])
 @login_required
 def filter_dashboard():
@@ -113,33 +150,29 @@ def filter_dashboard():
     # Clear previous filters
     session[f'dashboard_{kind}'] = {}
 
-    if 'clear' in request.form:
-        logger.debug(f"Clearing {kind} filters as per request")
-        return redirect(url_for('main.dashboard'))
-
     # Add filters to dictionary
     timeframe = request.form['timeframe']
     form_start_date = request.form['start_date']
     form_end_date = request.form['end_date']
 
     timeAnswers = check_dates(timeframe=timeframe, form_start_date=form_start_date, 
-                              form_end_date=form_end_date, for_what=kind)
+                              form_end_date=form_end_date)
+    
+    if timeAnswers[0] == None and timeAnswers[1] == None:
+        logger.debug(f"Clearing {kind} filters as per request")
+        flash(f"Cleared {kind} filters!", "info")
+        return redirect(url_for('main.dashboard'))
 
-    # expenses = timeAnswers[3]
-    # incomes = timeAnswers[2]
     if kind == "compares":
-    #     incTotal = 0
-    #     expTotal = 0
-    #     if incomes:
-    #         incTotal = incomes.with_entities(func.sum(Income.amount)).scalar() or 0
-    #     if expenses:
-    #         expTotal = expenses.with_entities(func.sum(Expense.amount)).scalar() or 0
-    #     profit = incTotal - expTotal
+        incomes = get_finances_by_date_range(timeAnswers[0], timeAnswers[1], 'i')
+        expenses = get_finances_by_date_range(timeAnswers[0], timeAnswers[1], 'e')
+        iTotal = get_total_from_query_list(incomes)
+        eTotal = get_total_from_query_list(expenses)
 
         # Add em to map
         session['dashboard_compares'] = {
             "timeframe": timeframe,
-            "profit": timeAnswers[2] if timeAnswers[2] else 0,
+            "profit": iTotal - eTotal,
             "start_date": timeAnswers[0].strftime("%Y-%m-%d") if timeAnswers[0] else None,
             "end_date": timeAnswers[1].strftime("%Y-%m-%d") if timeAnswers[1] else None
         }
@@ -147,193 +180,9 @@ def filter_dashboard():
         # Add em to map
         session[f'dashboard_{kind}'] = {
             "timeframe": timeframe,
-            "total": timeAnswers[2] if timeAnswers[2] else 0,
-            # "category_chart": get_pie_chart(data=category_breakdown, type=kind),
-            # "line_chart": get_line_graph(data=line_data, type=kind),
             "start_date": timeAnswers[0].strftime("%Y-%m-%d") if timeAnswers[0] else None,
             "end_date": timeAnswers[1].strftime("%Y-%m-%d") if timeAnswers[1] else None
         }
-
-    return redirect(url_for('main.dashboard'))
-
-
-#-------------------------------
-@main_bp.route('/dashboard/expenses/filter', methods=['POST'])
-@login_required
-def filter_dashboard_expenses():
-    logger.debug("Filter dashboard expenses function entered in main.py")
-
-    # Clear previous filters
-    session['dashboard_expenses'] = {}
-
-    if 'clear' in request.form:
-        logger.debug("Clearing expense filters as per request")
-        return redirect(url_for('main.dashboard'))
-
-    # Add filters to dictionary
-    timeframe = request.form['timeframe']
-    form_start_date = request.form['start_date']
-    form_end_date = request.form['end_date']
-
-    timeAnswers = check_dates(timeframe=timeframe, form_start_date=form_start_date, 
-                              form_end_date=form_end_date, for_what="expenses")
-
-    expenses = timeAnswers[3]
-    total = 0
-    if expenses:
-        total = expenses.with_entities(func.sum(Expense.amount)).scalar() or 0
-        # count = expenses.with_entities(func.count(Expense.amount)).scalar() or 0
-        category_totals = expenses.with_entities(Expense.category, func.sum(Expense.amount)).group_by(Expense.category).all()
-
-    # Line graph data
-    line_expenses = {}
-    current_date = timeAnswers[0]
-    end_date = timeAnswers[1]
-    if current_date:
-        line_expenses[current_date.strftime('%Y-%m-%d')] = 0
-    if end_date:
-        line_expenses[end_date.strftime('%Y-%m-%d')] = 0
-
-    # Loop through each date in the range
-    if current_date and end_date:
-        while current_date <= end_date:
-            line_expenses[current_date.strftime('%Y-%m-%d')] = 0
-            current_date += timedelta(days=1)
-    
-    # Add values from each expense date
-    if expenses:
-        for expense in expenses:
-            date_key = expense.date.strftime('%Y-%m-%d')
-            line_expenses[date_key] = line_expenses.get(date_key, 0) + expense.amount
-
-    category_breakdown = {}
-    if total > 0:
-        for category, amount in category_totals:
-            percentage = (amount / total) * 100
-            category_breakdown[category] = {'total': amount, 'percentage': round(percentage, 2)}
-
-    # Add em to map
-    session['dashboard_expenses'] = {
-        "timeframe": timeframe,
-        "total": total,
-        "category_chart": get_pie_chart(data=category_breakdown, type="Expenses"),
-        "line_chart": get_line_graph(data=line_expenses, type="Expenses"),
-        "start_date": timeAnswers[0].strftime("%Y-%m-%d") if timeAnswers[0] else None,
-        "end_date": timeAnswers[1].strftime("%Y-%m-%d") if timeAnswers[1] else None
-    }
-
-    return redirect(url_for('main.dashboard'))
-
-    
-#-------------------------------
-@main_bp.route('/dashboard/incomes/filter', methods=['POST'])
-@login_required
-def filter_dashboard_incomes():
-    logger.debug("Filter dashboard incomes function entered in main.py")
-
-    # Clear previous filters
-    session['dashboard_incomes'] = {}
-
-    if 'clear' in request.form:
-        logger.debug("Clearing income filters as per request")
-        return redirect(url_for('main.dashboard'))
-
-    # Get filters
-    timeframe = request.form['timeframe']
-    form_start_date = request.form['start_date']
-    form_end_date = request.form['end_date']
-
-    timeAnswers = check_dates(timeframe=timeframe, form_start_date=form_start_date, 
-                              form_end_date=form_end_date, for_what="incomes")
-
-    # Add values from each income date
-    incomes = timeAnswers[2]
-    total = 0
-    if incomes:
-        total = incomes.with_entities(func.sum(Income.amount)).scalar() or 0
-        # count = incomes.with_entities(func.count(Income.amount)).scalar() or 0
-        category_totals = incomes.with_entities(Income.category, func.sum(Income.amount)).group_by(Income.category).all()
-        
-    # Line graph data
-    line_incomes = {}
-    current_date = timeAnswers[0]
-    end_date = timeAnswers[1]
-    if current_date:
-        line_incomes[current_date.strftime('%Y-%m-%d')] = 0
-    if end_date:
-        line_incomes[end_date.strftime('%Y-%m-%d')] = 0
-
-    # Loop through each date in the range
-    if current_date and end_date:
-        while current_date <= end_date:
-            line_incomes[current_date.strftime('%Y-%m-%d')] = 0
-            current_date += timedelta(days=1)
-
-    # Add values from each income date
-    if incomes:
-        for income in incomes:
-            date_key = income.date.strftime('%Y-%m-%d')
-            line_incomes[date_key] = line_incomes.get(date_key, 0) + income.amount
-
-    # Pie chart breakdown
-    category_breakdown = {}
-    if total > 0:
-        for category, amount in category_totals:
-            percentage = (amount / total) * 100
-            category_breakdown[category] = {'total': amount, 'percentage': round(percentage, 2)}
-
-    # Add em to map
-    session['dashboard_incomes'] = {
-        "timeframe": timeframe,
-        "total": total,
-        "category_chart": get_pie_chart(data=category_breakdown, type="Incomes"),
-        "line_chart": get_line_graph(data=line_incomes, type="Incomes"),
-        "start_date": timeAnswers[0].strftime("%Y-%m-%d") if timeAnswers[0] else None,
-        "end_date": timeAnswers[1].strftime("%Y-%m-%d") if timeAnswers[1] else None
-    }
-
-    return redirect(url_for('main.dashboard'))
-
-
-#-------------------------------
-@main_bp.route('/dashboard/compare/filter', methods=['POST'])
-@login_required
-def filter_dashboard_comparatives():
-    logger.debug("Filter dashboard comparatives function entered in main.py")
-
-    # Clear previous filters
-    session['dashboard_compares'] = {}
-
-    if 'clear' in request.form:
-        logger.debug("Clearing income filters as per request")
-        return redirect(url_for('main.dashboard'))
-
-    # Add filters to dictionary
-    timeframe = request.form['timeframe']
-    form_start_date = request.form['start_date']
-    form_end_date = request.form['end_date']
-
-    timeAnswers = check_dates(timeframe=timeframe, form_start_date=form_start_date, 
-                              form_end_date=form_end_date, for_what="compares")
-
-    incomes = timeAnswers[2]
-    expenses = timeAnswers[3]
-
-    incTotal = 0
-    expTotal = 0
-    if incomes:
-        incTotal = incomes.with_entities(func.sum(Income.amount)).scalar() or 0
-    if expenses:
-        expTotal = expenses.with_entities(func.sum(Expense.amount)).scalar() or 0
-
-    # Add em to map
-    profit = incTotal - expTotal
-    session['dashboard_compares'] = {
-        "timeframe": timeframe,
-        "profit": profit,
-        "start_date": timeAnswers[0].strftime("%Y-%m-%d") if timeAnswers[0] else None,
-        "end_date": timeAnswers[1].strftime("%Y-%m-%d") if timeAnswers[1] else None
-    }
 
     return redirect(url_for('main.dashboard'))
 
