@@ -84,18 +84,6 @@ def profile():
 ###
 
 
-# # ------------------------------
-# @main_bp.route('/dashboard')
-# @login_required
-# def dashboard():
-#     logger.debug("Dashboard function entered in main.py")
-#     expenses = session.get('dashboard_expenses', {})
-#     incomes = session.get('dashboard_incomes', {})
-#     compares = session.get('dashboard_compares', {})
-#     timeframes = ["None", "1 day", "3 days", "5 days", "7 days", "1 month", "6 months", "1 year", "All time"]
-#     return render_template('dashboard.html', expenses=expenses, incomes=incomes, 
-#                            compare=compares, timeframes=timeframes)
-
 @main_bp.route('/dashboard')
 @login_required
 def dashboard():
