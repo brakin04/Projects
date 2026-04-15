@@ -1,8 +1,8 @@
-### Projects By Bryan A
+# Projects By Bryan A
 
 ## This repository holds all of my simpler projects
 
-# Java
+### Java
 - Go Fish  
 - Wordle  
 - Roulette  
@@ -10,13 +10,13 @@
 - Tic-Tac-Toe using Spring Boot  
 - Twenty One / Blackjack  
 
-# JavaScript
+### JavaScript
 - Data Extractor  
 
-# Python 
+### Python 
 - Tic-Tac-Toe  
 - Unit Converter  
 
-# Swift
+### Swift
 - Color Guesser (A memory game)  
 - Flash Cards  
