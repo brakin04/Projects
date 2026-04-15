@@ -1,13 +1,13 @@
 # Holds all routes related to authentication (register, login, logout)
 
-from .. import db
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
-from ..models import User
-from app.logging_config import logger
+from app.models import db, User
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import login_user, logout_user, login_required, current_user
+import logging
 
 auth_bp = Blueprint('auth', __name__)
+logger = logging.getLogger("FinanceLogger")
 
 security_questions = ["What is your hometown?", "What was the name of your first pet?", "What is your mother's maiden name?"]
 # ------------------------------
@@ -26,13 +26,13 @@ def register():
         # role = request.form.get('role') or 'user'
 
         # Check for existing email and nickname
-        if User.query.filter_by(email=email).first():
+        if db.session.scalar(db.select(User).filter_by(email=email).limit(1)):
             logger.warning("Registration failed: Email already taken")
             logger.debug("Register function exited with failure in routes.py")
             flash("Email already taken!", "warning")
             return redirect(url_for('auth.register'))
 
-        if User.query.filter_by(nickname=nickname).first():
+        if db.session.scalar(db.select(User).filter_by(nickname=nickname).limit(1)):
             logger.warning("Registration failed: Nickname already taken")
             logger.debug("Register function exited with failure in routes.py")
             flash("Nickname already taken!", "warning")
@@ -65,8 +65,7 @@ def login():
         password = request.form['password']
 
         # Search for user using nickname / email
-        user = User.query.filter((User.email == identity) | (User.nickname == identity)).first()
-        logger.debug(f"User found: {user.nickname if user else 'None'}")
+        user = db.session.scalar(db.select(User).filter((User.email == identity) | (User.nickname == identity)))
 
         # Make sure the password matches
         if user and check_password_hash(user.password, password):
@@ -97,7 +96,7 @@ def login_security():
         security_answer = request.form['security_answer']
 
         # Search for user info matching what was given
-        user = User.query.filter_by(nickname=nickname, email=email).first()
+        user = db.session.scalar(db.select(User).filter_by(nickname=nickname, email=email))
         logger.debug(f"User found for security question: {user.nickname if user else 'None'}")
         
         # Check security question answer

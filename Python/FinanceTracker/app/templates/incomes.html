@@ -16,8 +16,8 @@
         
         <!-- Info from database -->
         <h4>Incomes</h4>
-        <p>Total: ${{ total }}</p>
-        <p>Average: ${{ avg }}</p>
+        <p>Total: ${{ "{:,.2f}".format(total) }}</p>
+        <p>Average: ${{ "{:,.2f}".format(avg) }}</p>
         <div class="table-responsive">
             <table class="table table-bordered table-striped mt-3">
                 <thead>
@@ -34,14 +34,14 @@
                 {% for income in incomes %}
                     <tr>
                         <td>{{ income.date }}</td>
-                        <td>{{ income.amount }}</td>
+                        <td>{{ "{:,.2f}".format(income.amount) }}</td>
                         <td>{{ income.source }}</td>
                         <td>{{ income.category }}</td>
                         <td>{{ income.description[:50] }}{% if income.description|length > 50 %}...{% endif %}</td>       
                         <!-- Actions -->
                         <td>
-                            <a href="{{ url_for('finance.edit_income', income_id=income.id) }}" class="btn btn-outline-info btn-sm">Edit</a>
-                            <a href="{{ url_for('finance.delete_income', income_id=income.id) }}" class="btn btn-outline-danger btn-sm">Delete</a>
+                            <a href="{{ url_for('finance.edit_income', id=income.id) }}" class="btn btn-outline-info btn-sm">Edit</a>
+                            <a href="{{ url_for('finance.delete_income', id=income.id) }}" class="btn btn-outline-danger btn-sm">Delete</a>
                         </td>
                     </tr>
                 {% endfor %}

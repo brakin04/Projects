@@ -91,7 +91,7 @@
                             <label>Timeframe</label>
                             <select name="timeframe" id="out_timeframe_choice">
                                 {% for time in timeframes %}
-                                <option value="{{ time }}" {% if expenses.timeframe and expenses.timeframe == time  %}selected{% endif %}>{{ time }}</option>
+                                <option value="{{ time }}" {% if "None" == time  %}selected{% endif %}>{{ time }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -132,7 +132,7 @@
                             <label>Timeframe</label>
                             <select name="timeframe" id="comapre_timeframe_choice">
                                 {% for time in timeframes %}
-                                <option value="{{ time }}" {% if compare.timeframe and compare.timeframe == time  %}selected{% endif %}>{{ time }}</option>
+                                <option value="{{ time }}" {% if "None" == time  %}selected{% endif %}>{{ time }}</option>
                                 {% endfor %}
                             </select>
                         </div>

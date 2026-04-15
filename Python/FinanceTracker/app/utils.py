@@ -1,14 +1,15 @@
-from .models import Expense, Income, Budget, Category
-from app.logging_config import logger
-from flask_login import  current_user
+from app.models import Expense, Income, Budget, Category, db
 from datetime import datetime, timedelta
 from typing import Optional
 import plotly.express as px
 from dateutil.relativedelta import relativedelta
+import logging
+
+logger = logging.getLogger("FinanceLogger")
 
 #------------------------------
 # Read files
-def get_file_content(file_path: Optional[str] = "no path given"):
+def get_file_content(file_path: Optional[str]="no path given"):
     logger.debug(f"get_file_content function entered in utils.py for file: {file_path}")
     try:
         with open(file_path, 'r') as f:
@@ -24,15 +25,17 @@ def get_file_content(file_path: Optional[str] = "no path given"):
 
 #-------------------------------
 # Return all current categories of a specific type (expense, income, or all) as a list
-def get_all_categories(type: Optional[str] = 'all'):
+def get_all_categories(user_id: int | None=None, type: Optional[str]='all'):
     logger.debug(f"get_all_categories function entered in utils.py for type: {type}")
     categories = []
-    if type == "income":
-        categories = Category.query.filter_by(user_id=current_user.id, type="Income").order_by(Category.name.asc()).distinct().all()
-    elif type == "expense":
-        categories = Category.query.filter_by(user_id=current_user.id, type="Expense").order_by(Category.name.asc()).distinct().all()
+    if user_id is None:
+        logger.info("get_all_categories function exited with failure (No user_id) in utils.py")
+        return []
+    if type == "all" or type == None:
+        query = db.select(Category).filter_by(user_id=user_id).order_by(Category.name.asc()).distinct()
     else:
-        categories = Category.query.filter_by(user_id=current_user.id).order_by(Category.name.asc()).distinct().all()
+        query = db.select(Category).filter_by(user_id=user_id, type=type.capitalize()).order_by(Category.name.asc()).distinct()
+    categories = db.session.scalars(query).all()
     logger.debug("get_all_categories function exited in utils.py")
     return categories
 
@@ -40,24 +43,30 @@ def get_all_categories(type: Optional[str] = 'all'):
 #-------------------------------
 # Gets all expenses or incomes in a date range for the current user. Used for dashboard filters and comparisons. 
 #   Returns a list of expenses or incomes or None if there's none or type is wrong.
-def get_finances_by_date_range(start_date: Optional[datetime] = None, end_date: Optional[datetime] = None, 
-                               finance_type: Optional[str] = None):
+def get_finances_by_date_range(user_id: int | None=None, start_date: Optional[datetime] = None, 
+                               end_date: Optional[datetime] = None, finance_type: Optional[str] = None):
     logger.debug(f"get_finances_by_date_range function entered in utils.py for type: {finance_type}")
     query = None
+    if user_id is None:
+        logger.info("get_finances_by_date_range function exited with failure (No user_id) in utils.py")
+        return None
     if finance_type == 'e':
-        query = Expense.query.filter_by(user_id=current_user.id)
-        if start_date:
+        query = db.select(Expense).filter_by(user_id=user_id)
+        if start_date is not None:
             query = query.filter(Expense.date >= start_date)
-        if end_date:
+        if end_date is not None:
             query = query.filter(Expense.date <= end_date)
     elif finance_type == 'i':
-        query = Income.query.filter_by(user_id=current_user.id)
-        if start_date:
+        query = db.select(Income).filter_by(user_id=user_id)
+        if start_date is not None:
             query = query.filter(Income.date >= start_date)
-        if end_date:
+        if end_date is not None:
             query = query.filter(Income.date <= end_date)
-    logger.debug(f"get_finances_by_date_range function exited in utils.py with query: {query is not None}")
-    return query.all() if query else None
+    finances = None
+    if query is not None:
+        finances = db.session.scalars(query)
+    logger.debug(f"get_finances_by_date_range function exited in utils.py with finances: {finances is not None}")
+    return finances.all() if finances else None
 
 
 #-------------------------------
@@ -120,20 +129,25 @@ def check_dates(timeframe: Optional[str] = None, form_start_date: Optional[str] 
 
 #-------------------------------
 # Checks if a category is in use (before deleting or editing). Returns a boolean.
-def category_in_use(category: Category, user_id: int):
+def category_in_use(category: Category, user_id: int | None=None):
     logger.debug(f"category_in_use function entered in utils.py for category: {category.name}")
+    cat_name = category.name.capitalize()
     in_use = False
     if category.type.capitalize() == "Expense":
-        in_use = Expense.query.filter_by(user_id=user_id, category=category.name.capitalize()).first()
-        in_use = in_use or Budget.query.filter_by(user_id=user_id, category=category.name.capitalize()).first()
+        e_query = db.select(Expense).filter_by(user_id=user_id, category=cat_name).limit(1)
+        in_use = db.session.scalar(e_query) is not None
+        if not in_use:
+            b_query = db.select(Budget).filter_by(user_id=user_id, category=cat_name).limit(1)
+            in_use = db.session.scalar(b_query) is not None
     else:
-        in_use = Income.query.filter_by(user_id=user_id, category=category.name.capitalize()).first()
-    logger.debug(f"category_in_use function exited in utils.py with in_use: {in_use is not None}")
+        i_query = db.select(Income).filter_by(user_id=user_id, category=cat_name).limit(1)
+        in_use = db.session.scalar(i_query) is not None
+    logger.debug(f"category_in_use function exited in utils.py with in_use: {in_use}")
     return in_use
 
 
 #-------------------------------
-# Creates pie chart for dashboard. Takes in a list of expenses or incomes and returns html
+# Creates pie chart for dashboard and budget. Takes in a list of expenses or incomes and returns html
 def get_pie_chart(query_data: Optional[list] = None, type: Optional[str] = 'No type'):
     logger.debug(f"get_pie_chart function entered in utils.py for: {type}")
 

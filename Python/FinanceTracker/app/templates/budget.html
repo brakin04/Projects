@@ -16,7 +16,7 @@
 
         <!-- Info from database -->
         <h4>Budgets</h4>
-        <p>Monthly limit: ${{ total }}</p>
+        <p>Monthly limit: ${{ "{:,.2f}".format(total) }}</p>
         <div class="table-responsive">
             <table class="table table-bordered table-striped mt-3">
                 <thead>
@@ -29,12 +29,12 @@
                 <tbody>
                 {% for budget in budgets %}
                     <tr>
-                        <td>{{ budget.amount }}</td>
+                        <td>{{ "{:,.2f}".format(budget.amount) }}</td>
                         <td>{{ budget.category }}</td>
                         <!-- Actions -->
                         <td>
-                            <a href="{{ url_for('finance.edit_budget', budget_id=budget.id) }}" class="btn btn-outline-info btn-sm">Edit</a>
-                            <a href="{{ url_for('finance.delete_budget', budget_id=budget.id) }}" class="btn btn-outline-danger btn-sm">Delete</a>
+                            <a href="{{ url_for('finance.edit_budget', id=budget.id) }}" class="btn btn-outline-info btn-sm">Edit</a>
+                            <a href="{{ url_for('finance.delete_budget', id=budget.id) }}" class="btn btn-outline-danger btn-sm">Delete</a>
                         </td>
                     </tr>
                 {% endfor %}

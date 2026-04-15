@@ -1,14 +1,14 @@
 import pytest
+import os
 import logging
 from app import create_app, db
 
+os.environ['TESTING'] = 'True'
 class TestConfig:
     TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
     WTF_CSRF_ENABLED = False
     SECRET_KEY = 'test-key'
-    FILE_HANDLER = logging.FileHandler('log_file_path')
-    FILE_HANDLER.setLevel(logging.DEBUG)
 
 @pytest.fixture
 def app():
@@ -17,7 +17,6 @@ def app():
 
 @pytest.fixture
 def client(app):
-    # This provides the 'client' argument to your tests
     return app.test_client()
 
 @pytest.fixture

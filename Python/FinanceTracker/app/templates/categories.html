@@ -41,8 +41,8 @@
                         <td>{{ category.description[:50] }}{% if category.description|length > 50 %}...{% endif %}</td>
                         <!-- Actions -->
                         <td>
-                            <a href="{{ url_for('finance.edit_category', category_id=category.id) }}" class="btn btn-outline-info btn-sm">Edit</a>
-                            <a href="{{ url_for('finance.delete_category', category_id=category.id) }}" class="btn btn-outline-danger btn-sm">Delete</a>
+                            <a href="{{ url_for('finance.edit_category', id=category.id) }}" class="btn btn-outline-info btn-sm">Edit</a>
+                            <a href="{{ url_for('finance.delete_category', id=category.id) }}" class="btn btn-outline-danger btn-sm">Delete</a>
                         </td>
                     </tr>
                 {% endfor %}

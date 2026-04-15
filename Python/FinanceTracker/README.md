@@ -20,28 +20,18 @@ A simple money tracking platform built by Bryan A.
 - Flask-Login
 - SQLAlchemy
 - Bootstrap 5
+- Jinja2
 
 ---
 
 ## ✅ How to Run Locally
 
-<!-- ### 1️⃣ Setup Virtual Environment
-```bash
-python -m venv venv
-source venv/bin/activate 
-``` -->
-
-<!-- #### If source venv/bin/activate doesn't work use:
-```bash
-.\venv\Scripts\activate.bat
-``` -->
-
-### 2️⃣ Install Dependencies
+### 1️⃣ Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3️⃣ Initialize Database
+### 2️⃣ Initialize Database
 ```bash
 python
 >>> from app import create_app, db
@@ -50,7 +40,7 @@ python
 >>> db.create_all()
 >>> exit()
 ```
-### 4️⃣ Run this line
+### 3️⃣ Run this line
 ```bash
 export FLASK_APP=run.py
 ```
@@ -66,7 +56,7 @@ chmod +x start.sh
 ```
 If that doesnt work use option 3 below
 
-### 5️⃣ Run the App
+### 4️⃣ Run the App
 Option 1: Run regularly
 ```bash
 python run.py
@@ -81,18 +71,24 @@ Option 3:
 ./start.bat
 ```
 
-### 6️⃣ Visit ➤ http://127.0.0.1:5050 in your browser.
+### 5️⃣ Visit ➤ http://127.0.0.1:5050 in your browser.
 
-### 7️⃣ To exit the app press: crtl + c
+### 6️⃣ To exit the app press: crtl + c
 
 ---
-To change the file logger's level, click the logging info button on the dashboard
+To change the file logger's level, click the logging info button on the dashboard  
 
 ---
 ## How to run using Docker
 ```bash
     docker build -t finance-app .
     docker run -p 5050:5050 finance-app
+```
+
+## To update the database with schema changes
+```bash
+    export FLASK_APP=run.py
+    flask update_db  
 ```
 
 ## 💡 Notes

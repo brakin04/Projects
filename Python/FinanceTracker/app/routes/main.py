@@ -1,19 +1,17 @@
 # Holds routes for home page, profile, dashboard, and logging info page
 
-from shlex import split
-
 from flask import Blueprint, render_template, current_app, session, request, redirect, url_for, flash
-from ..models import db, User, Expense, Income
+from app.models import db, User
 from werkzeug.security import generate_password_hash
 from flask_login import login_required, current_user
-from app.logging_config import logger, savedLevel
-from ..utils import get_file_content, check_dates, get_pie_chart, get_bar_graph, get_finances_by_date_range, get_total_from_query_list
-from sqlalchemy import func
-from datetime import datetime, timedelta
+from app.logging_config import savedLevel
+from app.utils import get_file_content, check_dates, get_pie_chart, get_bar_graph, get_finances_by_date_range, get_total_from_query_list
+from datetime import datetime
 import logging
 import os
 
 main_bp = Blueprint('main', __name__)
+logger = logging.getLogger("FinanceLogger")
 
 @main_bp.route('/')
 def home():
@@ -41,13 +39,15 @@ def profile():
 
         # Check for email or nickname conflicts
         if email != current_user.email:
-            if User.query.filter(User.email == email, User.id != current_user.id).first():
+            query = db.select(User).filter_by(email=email).filter(User.id != current_user.id).limit(1)
+            if db.session.scalar(query) is not None:
                 logger.warning("Profile update failed: Email already taken")
                 flash("Email already taken!", "warning")
                 return redirect(url_for('main.profile'))
 
         if nickname != current_user.nickname:
-            if User.query.filter(User.nickname == nickname, User.id != current_user.id).first():
+            query = db.select(User).filter_by(nickname=nickname).filter(User.id != current_user.id).limit(1)
+            if db.session.scalar(query) is not None:
                 logger.warning(f"Profile update failed: Nickname \"{nickname}\" already taken")
                 flash("Nickname already taken!", "warning")
                 return redirect(url_for('main.profile'))
@@ -97,16 +97,16 @@ def dashboard():
     processed = {"expenses": {}, "incomes": {}, "compares": {}}
     
     for kind in ['expenses', 'incomes', 'compares']:
-        sess_data = session.get(f'dashboard_{kind}', {})
+        sess_data = session.get(f'dashboard_{kind}', {}).copy()
         if sess_data:
             start, end = get_dates(sess_data)
             
             if kind == "compares":
-                i_data = get_finances_by_date_range(start, end, 'i')
-                e_data = get_finances_by_date_range(start, end, 'e')
+                i_data = get_finances_by_date_range(user_id=current_user.id, start_date=start, end_date=end, finance_type='i')
+                e_data = get_finances_by_date_range(user_id=current_user.id, start_date=start, end_date=end, finance_type='e')
                 sess_data['profit'] = get_total_from_query_list(i_data) - get_total_from_query_list(e_data)
             else:
-                data = get_finances_by_date_range(start, end, kind[0])
+                data = get_finances_by_date_range(user_id=current_user.id, start_date=start, end_date=end, finance_type=kind[0])
                 sess_data['total'] = get_total_from_query_list(data)
                 sess_data['category_chart'] = get_pie_chart(query_data=data, type=kind)
                 sess_data['bar_graph'] = get_bar_graph(start=start, end=end, query_data=data, type=kind)
@@ -127,7 +127,7 @@ def dashboard():
 @main_bp.route('/dashboard/filter', methods=['POST'])
 @login_required
 def filter_dashboard():
-    logger.debug("Filter dashboard function entered in main.py")
+    logger.debug("filter_dashboard function entered in main.py")
     kind = request.args.get('kind').lower()
 
     if kind not in ['expenses', 'incomes', 'compares']:
@@ -152,8 +152,8 @@ def filter_dashboard():
         return redirect(url_for('main.dashboard'))
 
     if kind == "compares":
-        incomes = get_finances_by_date_range(timeAnswers[0], timeAnswers[1], 'i')
-        expenses = get_finances_by_date_range(timeAnswers[0], timeAnswers[1], 'e')
+        incomes = get_finances_by_date_range(user_id=current_user.id, start_date=timeAnswers[0], end_date=timeAnswers[1], finance_type='i')
+        expenses = get_finances_by_date_range(user_id=current_user.id, start_date=timeAnswers[0], end_date=timeAnswers[1], finance_type='e')
         iTotal = get_total_from_query_list(incomes)
         eTotal = get_total_from_query_list(expenses)
 
@@ -171,7 +171,7 @@ def filter_dashboard():
             "start_date": timeAnswers[0].strftime("%Y-%m-%d") if timeAnswers[0] else None,
             "end_date": timeAnswers[1].strftime("%Y-%m-%d") if timeAnswers[1] else None
         }
-
+    logger.debug("filter_dashboard function exited in main.py")
     return redirect(url_for('main.dashboard'))
 
 
@@ -187,7 +187,8 @@ logLevel = logging.DEBUG
 def logging_info():
     logger.debug(f"logging_info function entered in main.py method: {request.method}")
     # Get the handler and check if its found
-    file_handler = current_app.config.get('FILE_HANDLER')
+    file_handler = next((h for h in logger.handlers if isinstance(h, logging.FileHandler)), None)
+    # file_handler = current_app.config.get('FILE_HANDLER')
 
     if not file_handler:
         logger.warning("logging_info function exited (handler not found)")

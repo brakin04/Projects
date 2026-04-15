@@ -2,8 +2,27 @@ from app.models import User
 from werkzeug.security import generate_password_hash
 from flask_login import current_user
 
+# Helper for less repeated code  
+def register_users(db_setup, number=1):
+    users = [None] * number
+    for i in range(number):
+        user = User(email=f'email{i+1}@test.com', nickname=f'tester{i+1}', password=generate_password_hash('correct'), security_answers=['a','b','c'])
+        users[i] = user
+        db_setup.session.add(user)
+    db_setup.session.commit()
+    return users
+
+
+def login(client, user_id=1):
+    client.post('/login', data={
+        'identity': f'email{user_id}@test.com',
+        'password': 'correct'
+    })
+
+def logout(client):
+    client.get('/logout', follow_redirects=True)
+
 def test_register_success(client, db_setup):
-    # Simulate filling out the registration form
     response = client.post('/register', data={
         'email': 'new@test.com',
         'nickname': 'newuser',
@@ -12,91 +31,115 @@ def test_register_success(client, db_setup):
         'answer2': 'PetName',
         'answer3': 'MaidenName'
     }, follow_redirects=True)
-    
     assert response.status_code == 200
     assert response.request.path == '/login'
-    # # if follow redirects is false, check where trying to go
-    # assert response.headers['Location'] == '/login'
-    # Check if user actually exists in DB
-    assert User.query.filter_by(email='new@test.com').first() is not None
+    assert db_setup.session.scalar(db_setup.select(User).filter_by(email='new@test.com')) is not None
 
 def test_register_duplicate_email(client, db_setup):
-    # First, create a user manually in the test DB
-    user = User(email='taken@test.com', nickname='original', password='hash', security_answers=['a','b','c'])
-    db_setup.session.add(user)
-    db_setup.session.commit()
-
-    # Try to register with the same email
+    register_users(db_setup)
     response = client.post('/register', data={
-        'email': 'taken@test.com',
+        'email': 'email1@test.com',
         'nickname': 'different',
         'password': 'password123',
         'answer1': 'a', 'answer2': 'b', 'answer3': 'c'
     }, follow_redirects=True)
-
+    user = db_setup.session.scalar(db_setup.select(User).filter_by(nickname='different'))
+    assert user is None
+    assert response.status_code == 200
     assert response.request.path == '/register'
 
-def test_login_success(client, db_setup):
-    # 1. Setup: Create a user with a hashed password
-    user = User(email='login@test.com', nickname='tester', 
-                password=generate_password_hash('correct_pass'),
-                security_answers=['a','b','c'])
-    db_setup.session.add(user)
-    db_setup.session.commit()
-
-    # 2. Act: Try logging in with the email
+def test_login_success_email(client, db_setup):
+    register_users(db_setup)
     response = client.post('/login', data={
-        'identity': 'login@test.com',
-        'password': 'correct_pass'
+        'identity': 'email1@test.com',
+        'password': 'correct'
     }, follow_redirects=True)
-
-    # 3. Assert
     assert response.status_code == 200
     assert b"Welcome back" in response.data
-    assert response.request.path == '/dashboard' # Check redirect
+    assert response.request.path == '/dashboard'
+    with client.application.test_request_context():
+        assert current_user.is_authenticated
+
+def test_login_success_nickname(client, db_setup):
+    register_users(db_setup)
+    response = client.post('/login', data={
+        'identity': 'tester1',
+        'password': 'correct'
+    }, follow_redirects=True)
+    assert response.status_code == 200
+    assert b"Welcome back" in response.data
+    assert response.request.path == '/dashboard'
     with client.application.test_request_context():
         assert current_user.is_authenticated
 
 def test_login_invalid_password(client, db_setup):
+    register_users(db_setup)
     response = client.post('/login', data={
-        'identity': 'nonexistent@test.com',
+        'identity': 'email1@test.com',
         'password': 'wrong'
     }, follow_redirects=True)
-    
     assert b"Invalid credentials" in response.data
     assert response.request.path == '/login'
+    with client.application.test_request_context():
+        assert not current_user.is_authenticated
+
+def test_login_invalid_email(client, db_setup):
+    register_users(db_setup)
+    response = client.post('/login', data={
+        'identity': 'nonexistent@test.com',
+        'password': 'correct'
+    }, follow_redirects=True)
+    assert b"Invalid credentials" in response.data
+    assert response.request.path == '/login'
+    with client.application.test_request_context():
+        assert not current_user.is_authenticated      
+
+def test_login_invalid_nickname(client, db_setup):
+    register_users(db_setup)
+    response = client.post('/login', data={
+        'identity': 'not-tester',
+        'password': 'correct'
+    }, follow_redirects=True)
+    assert b"Invalid credentials" in response.data
+    assert response.request.path == '/login'
+    with client.application.test_request_context():
+        assert not current_user.is_authenticated
 
 def test_login_security_success(client, db_setup):
     user = User(email='sec@test.com', nickname='sec_user', 
                 password='hash', security_answers=['Hometown', 'Pet', 'Maiden'])
     db_setup.session.add(user)
     db_setup.session.commit()
-
-    # Test answering the first question correctly
     response = client.post('/login/security', data={
         'email': 'sec@test.com',
         'nickname': 'sec_user',
         'security_question': "What is your hometown?",
-        'security_answer': 'hometown' # Testing case-insensitivity
+        'security_answer': 'hometown'
     }, follow_redirects=True)
-
     assert b"Welcome back" in response.data
     assert response.request.path == '/profile'
 
-def test_logout(client, db_setup):
-    # First, log the user in using the session helper
-    user = User(email='out@test.com', nickname='logout_me', password='hash', security_answers=['a','b','c'])
+def test_login_security_fail(client, db_setup):
+    user = User(email='sec@test.com', nickname='sec_user', 
+                password='hash', security_answers=['Hometown', 'Pet', 'Maiden'])
     db_setup.session.add(user)
     db_setup.session.commit()
+    response = client.post('/login/security', data={
+        'email': 'sec@test.com',
+        'nickname': 'sec_user',
+        'security_question': "What is your hometown?",
+        'security_answer': 'dallas'
+    }, follow_redirects=True)
+    assert b"Invalid credentials" in response.data
+    assert response.request.path == '/login/security'
 
-    with client:
-        client.post('/login', data={'identity': 'out@test.com', 'password': 'hash'})
-        
-        # Now trigger logout
-        response = client.get('/logout', follow_redirects=True)
-        assert response.status_code == 200
-        assert response.request.path == '/login'
-        
-        # Verify user is no longer in current_user
-        with client.application.test_request_context():
-            assert not current_user.is_authenticated
+def test_logout(client, db_setup):
+    register_users(db_setup, 2)
+    client.post('/login', data={'identity': 'email1@test.com', 'password': 'correct'})   
+    with client.application.test_request_context():
+        assert current_user.is_authenticated 
+    response = client.get('/logout', follow_redirects=True)
+    assert response.status_code == 200
+    assert response.request.path == '/login'
+    with client.application.test_request_context():
+        assert not current_user.is_authenticated
